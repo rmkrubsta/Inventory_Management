@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const assetRoutes = require('./routes/assets');
+const auditRoutes = require('./routes/audits');
+const maintenanceRoutes = require('./routes/maintenance');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -11,6 +13,8 @@ app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
 app.use(express.json());
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'assetflow-api' }));
 app.use('/api/assets', assetRoutes);
+app.use('/api/audits', auditRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
 app.use((error, _req, res, _next) => {
   res.status(error.name === 'ValidationError' ? 400 : 500).json({ error: error.message });
 });

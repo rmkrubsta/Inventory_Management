@@ -3,12 +3,14 @@ import { Download, Plus } from 'lucide-react';
 import { createRoot } from 'react-dom/client';
 import { ActivityPanel } from './components/ActivityPanel';
 import { AssetForm } from './components/AssetForm';
+import { AuditForm } from './components/AuditForm';
 import { AssetsTable } from './components/AssetsTable';
 import { AuditPanel } from './components/AuditPanel';
 import { DashboardHeader } from './components/DashboardHeader';
 import { DashboardSidebar } from './components/DashboardSidebar';
 import { MetricGrid } from './components/MetricGrid';
 import { ManagementView } from './components/ManagementView';
+import { MaintenanceForm } from './components/MaintenanceForm';
 import { PortfolioPanel } from './components/PortfolioPanel';
 import { SearchResults } from './components/SearchResults';
 import './styles.css';
@@ -21,10 +23,14 @@ const demoAssets = [
 
 function App() {
   const [assets, setAssets] = useState(demoAssets);
+  const [audits, setAudits] = useState([]);
+  const [maintenance, setMaintenance] = useState([]);
   const [query, setQuery] = useState('');
   const [activeView, setActiveView] = useState('Overview');
   const [message, setMessage] = useState('');
   const [showAssetForm, setShowAssetForm] = useState(false);
+  const [showAuditForm, setShowAuditForm] = useState(false);
+  const [showMaintenanceForm, setShowMaintenanceForm] = useState(false);
 
   useEffect(() => {
     fetch('/api/assets').then((response) => response.ok ? response.json() : []).then((data) => {
@@ -32,14 +38,32 @@ function App() {
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetch('/api/audits').then((response) => response.ok ? response.json() : []).then(setAudits).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/maintenance').then((response) => response.ok ? response.json() : []).then(setMaintenance).catch(() => {});
+  }, []);
+
   const notify = (text) => { setMessage(text); window.setTimeout(() => setMessage(''), 2400); };
   const addAsset = (asset) => { setAssets((currentAssets) => [asset, ...currentAssets]); setShowAssetForm(false); notify(`${asset.assetId} added successfully`); };
+  const addAudit = (audit) => { setAudits((currentAudits) => [...currentAudits, audit].sort((first, second) => new Date(first.scheduledFor) - new Date(second.scheduledFor))); setShowAuditForm(false); notify('Audit scheduled successfully'); };
+  const addMaintenance = (workOrder) => { setMaintenance((currentWorkOrders) => [workOrder, ...currentWorkOrders]); setShowMaintenanceForm(false); notify('Maintenance logged successfully'); };
+  const resolveMaintenance = async (workOrder) => {
+    if (!workOrder._id || workOrder._id.startsWith('AST-')) return notify('Demo work orders cannot be resolved until logged');
+    const response = await fetch(`/api/maintenance/${workOrder._id}/resolve`, { method: 'PATCH' });
+    if (!response.ok) return notify('Could not resolve this work order');
+    const updated = await response.json();
+    setMaintenance((currentWorkOrders) => currentWorkOrders.map((item) => item._id === updated._id ? updated : item));
+    notify(`${updated.assetId} marked as resolved`);
+  };
   const normalizedQuery = query.trim().toLowerCase();
   const filteredAssets = assets.filter((asset) => `${asset.name} ${asset.assetId} ${asset.location} ${asset.category} ${asset.status} ${asset.assignedTo || ''}`.toLowerCase().includes(normalizedQuery));
 
   const isOverview = activeView === 'Overview';
   const showSearchResults = isOverview && normalizedQuery;
-  return <div className="react-app"><DashboardSidebar activeView={activeView} onNavigate={setActiveView} onNotify={notify}/><main><DashboardHeader activeView={activeView} query={query} onQueryChange={setQuery}/><div className="content">{showSearchResults ? <SearchResults query={query} assets={filteredAssets} onClear={() => setQuery('')}/> : isOverview ? <><section className="intro"><div><label>Monday, 24 August 2026 <i>●</i> Live data</label><h1>Good morning, Riya <span>✦</span></h1><p>Here is what is happening across your asset network today.</p></div><div className="actions"><button onClick={() => notify('Report export queued')}><Download size={14}/>Export report</button><button className="primary" onClick={() => setShowAssetForm(true)}><Plus size={14}/>Add asset</button></div></section><MetricGrid/><section className="columns"><PortfolioPanel/><ActivityPanel onNotify={notify}/></section><AuditPanel onNotify={notify}/><AssetsTable assets={filteredAssets} onViewAll={() => setActiveView('Assets')}/></> : <ManagementView view={activeView} assets={filteredAssets} query={query} onQueryChange={setQuery} onNotify={notify} onAddAsset={() => setShowAssetForm(true)}/>}<small className="system">AssetFlow Enterprise · v1.0 <span>System status <i>●</i> All systems operational</span></small></div></main>{showAssetForm && <AssetForm onClose={() => setShowAssetForm(false)} onSave={addAsset}/>} {message && <div className="toast">✓ &nbsp;{message}</div>}</div>;
+  return <div className="react-app"><DashboardSidebar activeView={activeView} onNavigate={setActiveView} onNotify={notify}/><main><DashboardHeader activeView={activeView} query={query} onQueryChange={setQuery}/><div className="content">{showSearchResults ? <SearchResults query={query} assets={filteredAssets} onClear={() => setQuery('')}/> : isOverview ? <><section className="intro"><div><label>Monday, 24 August 2026 <i>●</i> Live data</label><h1>Good morning, Riya <span>✦</span></h1><p>Here is what is happening across your asset network today.</p></div><div className="actions"><button onClick={() => notify('Report export queued')}><Download size={14}/>Export report</button><button className="primary" onClick={() => setShowAssetForm(true)}><Plus size={14}/>Add asset</button></div></section><MetricGrid/><section className="columns"><PortfolioPanel/><ActivityPanel onNotify={notify}/></section><AuditPanel onNotify={notify}/><AssetsTable assets={filteredAssets} onViewAll={() => setActiveView('Assets')}/></> : <ManagementView view={activeView} assets={filteredAssets} query={query} onQueryChange={setQuery} onNotify={notify} onAddAsset={() => setShowAssetForm(true)} audits={audits} onScheduleAudit={() => setShowAuditForm(true)} maintenance={maintenance} onLogMaintenance={() => setShowMaintenanceForm(true)} onResolveMaintenance={resolveMaintenance}/>}<small className="system">AssetFlow Enterprise · v1.0 <span>System status <i>●</i> All systems operational</span></small></div></main>{showAssetForm && <AssetForm onClose={() => setShowAssetForm(false)} onSave={addAsset}/>} {showAuditForm && <AuditForm onClose={() => setShowAuditForm(false)} onSave={addAudit}/>} {showMaintenanceForm && <MaintenanceForm assets={assets} onClose={() => setShowMaintenanceForm(false)} onSave={addMaintenance}/>} {message && <div className="toast">✓ &nbsp;{message}</div>}</div>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
