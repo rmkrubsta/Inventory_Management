@@ -10,6 +10,7 @@ import { DashboardSidebar } from './components/DashboardSidebar';
 import { MetricGrid } from './components/MetricGrid';
 import { ManagementView } from './components/ManagementView';
 import { PortfolioPanel } from './components/PortfolioPanel';
+import { SearchResults } from './components/SearchResults';
 import './styles.css';
 
 const demoAssets = [
@@ -33,10 +34,12 @@ function App() {
 
   const notify = (text) => { setMessage(text); window.setTimeout(() => setMessage(''), 2400); };
   const addAsset = (asset) => { setAssets((currentAssets) => [asset, ...currentAssets]); setShowAssetForm(false); notify(`${asset.assetId} added successfully`); };
-  const filteredAssets = assets.filter((asset) => `${asset.name} ${asset.assetId} ${asset.location}`.toLowerCase().includes(query.toLowerCase()));
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredAssets = assets.filter((asset) => `${asset.name} ${asset.assetId} ${asset.location} ${asset.category} ${asset.status} ${asset.assignedTo || ''}`.toLowerCase().includes(normalizedQuery));
 
   const isOverview = activeView === 'Overview';
-  return <div className="react-app"><DashboardSidebar activeView={activeView} onNavigate={setActiveView} onNotify={notify}/><main><DashboardHeader activeView={activeView} query={query} onQueryChange={setQuery}/><div className="content">{isOverview ? <><section className="intro"><div><label>Monday, 24 August 2026 <i>●</i> Live data</label><h1>Good morning, Riya <span>✦</span></h1><p>Here is what is happening across your asset network today.</p></div><div className="actions"><button onClick={() => notify('Report export queued')}><Download size={14}/>Export report</button><button className="primary" onClick={() => setShowAssetForm(true)}><Plus size={14}/>Add asset</button></div></section><MetricGrid/><section className="columns"><PortfolioPanel/><ActivityPanel onNotify={notify}/></section><AuditPanel onNotify={notify}/><AssetsTable assets={filteredAssets} onViewAll={() => setActiveView('Assets')}/></> : <ManagementView view={activeView} assets={filteredAssets} query={query} onQueryChange={setQuery} onNotify={notify} onAddAsset={() => setShowAssetForm(true)}/>}<small className="system">AssetFlow Enterprise · v1.0 <span>System status <i>●</i> All systems operational</span></small></div></main>{showAssetForm && <AssetForm onClose={() => setShowAssetForm(false)} onSave={addAsset}/>} {message && <div className="toast">✓ &nbsp;{message}</div>}</div>;
+  const showSearchResults = isOverview && normalizedQuery;
+  return <div className="react-app"><DashboardSidebar activeView={activeView} onNavigate={setActiveView} onNotify={notify}/><main><DashboardHeader activeView={activeView} query={query} onQueryChange={setQuery}/><div className="content">{showSearchResults ? <SearchResults query={query} assets={filteredAssets} onClear={() => setQuery('')}/> : isOverview ? <><section className="intro"><div><label>Monday, 24 August 2026 <i>●</i> Live data</label><h1>Good morning, Riya <span>✦</span></h1><p>Here is what is happening across your asset network today.</p></div><div className="actions"><button onClick={() => notify('Report export queued')}><Download size={14}/>Export report</button><button className="primary" onClick={() => setShowAssetForm(true)}><Plus size={14}/>Add asset</button></div></section><MetricGrid/><section className="columns"><PortfolioPanel/><ActivityPanel onNotify={notify}/></section><AuditPanel onNotify={notify}/><AssetsTable assets={filteredAssets} onViewAll={() => setActiveView('Assets')}/></> : <ManagementView view={activeView} assets={filteredAssets} query={query} onQueryChange={setQuery} onNotify={notify} onAddAsset={() => setShowAssetForm(true)}/>}<small className="system">AssetFlow Enterprise · v1.0 <span>System status <i>●</i> All systems operational</span></small></div></main>{showAssetForm && <AssetForm onClose={() => setShowAssetForm(false)} onSave={addAsset}/>} {message && <div className="toast">✓ &nbsp;{message}</div>}</div>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
