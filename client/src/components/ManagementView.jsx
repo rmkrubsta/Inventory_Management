@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Check, ClipboardCheck, Filter, Plus, Search, Wrench } from 'lucide-react';
 
 const people = [
@@ -46,5 +47,16 @@ function MaintenanceView({ assets, maintenance, onLogMaintenance, onResolveMaint
 function PeopleView({ query, onQueryChange, onNotify }) {
   const normalizedQuery = query.trim().toLowerCase();
   const filteredPeople = people.filter((person) => `${person.name} ${person.team} ${person.status}`.toLowerCase().includes(normalizedQuery));
-  return <><ViewHeading eyebrow="Accountability" title="People & teams" description={`${filteredPeople.length} people match your current search.`} action="Invite person" onAction={() => onNotify('Invitation form opened')}/><section className="panel management-panel"><div className="toolbar"><div className="inline-search"><Search size={14}/><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search people or teams..." aria-label="Search people or teams"/></div><button><Filter size={13}/> Team <span>⌄</span></button></div><div className="people-grid">{filteredPeople.length ? filteredPeople.map((person) => <article className="person-card" key={person.name}><div className="person-avatar">{person.initials}</div><div><strong>{person.name}</strong><small>{person.team}</small></div><span className={`person-status ${person.status === 'Active' ? 'active-person' : ''}`}>{person.status}</span><div className="person-assets"><b>{person.assets}</b><small>assigned assets</small></div><button onClick={() => onNotify(`Opening ${person.name}'s profile`)}>View profile</button></article>) : <p className="empty-state">No people match “{query}”.</p>}</div></section></>;
+  const [selectedPerson, setSelectedPerson] = useState(filteredPeople[0] || null);
+  const [showFullProfile, setShowFullProfile] = useState(false);
+
+  const activePerson = filteredPeople.find((person) => person.name === selectedPerson?.name) || filteredPeople[0] || null;
+
+  const openFullProfile = (person) => {
+    setSelectedPerson(person);
+    setShowFullProfile(true);
+    onNotify(`Opening ${person.name}'s full profile`);
+  };
+
+  return <><ViewHeading eyebrow="Accountability" title="People & teams" description={`${filteredPeople.length} people match your current search.`} action="Invite person" onAction={() => onNotify('Invitation form opened')}/><section className="panel management-panel"><div className="toolbar"><div className="inline-search"><Search size={14}/><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search people or teams..." aria-label="Search people or teams"/></div><button><Filter size={13}/> Team <span>⌄</span></button></div>{activePerson && <article className="panel person-profile"><div className="person-avatar">{activePerson.initials}</div><div className="person-profile-meta"><label>Profile</label><h3>{activePerson.name}</h3><small>{activePerson.team}</small></div><div className="person-assets"><b>{activePerson.assets}</b><small>assigned assets</small></div><span className={`person-status ${activePerson.status === 'Active' ? 'active-person' : ''}`}>{activePerson.status}</span><button onClick={() => openFullProfile(activePerson)}>Open full profile</button></article>}{showFullProfile && activePerson && <article className="panel person-detail"><div className="panel-head"><div><label>Employee profile</label><h2>{activePerson.name}</h2></div><button className="link" onClick={() => setShowFullProfile(false)}>Close</button></div><div className="person-detail-grid"><div><strong>Team</strong><small>{activePerson.team}</small></div><div><strong>Status</strong><small>{activePerson.status}</small></div><div><strong>Assigned assets</strong><small>{activePerson.assets}</small></div><div><strong>Location</strong><small>Johannesburg HQ</small></div></div></article>}<div className="people-grid">{filteredPeople.length ? filteredPeople.map((person) => <article className="person-card" key={person.name}><div className="person-avatar">{person.initials}</div><div><strong>{person.name}</strong><small>{person.team}</small></div><span className={`person-status ${person.status === 'Active' ? 'active-person' : ''}`}>{person.status}</span><div className="person-assets"><b>{person.assets}</b><small>assigned assets</small></div><button onClick={() => { setSelectedPerson(person); setShowFullProfile(false); onNotify(`Opening ${person.name}'s profile`); }}>View profile</button></article>) : <p className="empty-state">No people match “{query}”.</p>}</div></section></>;
 }
