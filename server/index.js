@@ -2,14 +2,16 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const { validateEnv } = require('./env');
 const assetRoutes = require('./routes/assets');
 const auditRoutes = require('./routes/audits');
 const maintenanceRoutes = require('./routes/maintenance');
 
+const env = validateEnv();
 const app = express();
-const port = process.env.PORT || 5000;
+const port = env.PORT;
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+app.use(cors({ origin: env.CLIENT_URL }));
 app.use(express.json());
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'assetflow-api' }));
 app.use('/api/assets', assetRoutes);
@@ -21,7 +23,7 @@ app.use((error, _req, res, _next) => {
 
 async function start() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(env.MONGODB_URI);
     app.listen(port, () => console.log(`AssetFlow API running on port ${port}`));
   } catch (error) {
     console.error(`MongoDB connection failed: ${error.message}`);
