@@ -57,6 +57,11 @@ function App() {
   const login = (user) => { window.localStorage.setItem('assetflow.currentUser', JSON.stringify(user)); setCurrentUser(user); setViewHistory([]); setActiveView(defaultRoleView(user.role)); };
   const logout = () => { window.localStorage.removeItem('assetflow.currentUser'); setCurrentUser(null); setActiveView('Overview'); };
   useEffect(() => { if (currentUser) setActiveView(defaultRoleView(currentUser.role)); }, [currentUser]);
+  useEffect(() => {
+    const handleAssetUpdated = (event) => setAssets((currentAssets) => currentAssets.map((asset) => asset.assetId === event.detail.assetId ? event.detail : asset));
+    window.addEventListener('assetflow-asset-updated', handleAssetUpdated);
+    return () => window.removeEventListener('assetflow-asset-updated', handleAssetUpdated);
+  }, []);
   const addAsset = (asset) => { setAssets((currentAssets) => [asset, ...currentAssets]); setShowAssetForm(false); notify(`${asset.assetId} added successfully`); };
   const addAudit = (audit) => { setAudits((currentAudits) => [...currentAudits, audit].sort((first, second) => new Date(first.scheduledFor) - new Date(second.scheduledFor))); setShowAuditForm(false); notify('Audit scheduled successfully'); };
   const addMaintenance = (workOrder) => { setMaintenance((currentWorkOrders) => [workOrder, ...currentWorkOrders]); setShowMaintenanceForm(false); notify('Maintenance logged successfully'); };
@@ -82,6 +87,7 @@ function App() {
     if (!response.ok) return notify('Could not resolve this work order');
     const updated = await response.json();
     setMaintenance((currentWorkOrders) => currentWorkOrders.map((item) => item._id === updated._id ? updated : item));
+    setAssets((currentAssets) => currentAssets.map((asset) => asset.assetId === updated.assetId ? { ...asset, status: asset.assignedTo ? 'Assigned' : 'Available' } : asset));
     notify(`${updated.assetId} marked as resolved`);
   };
   const normalizedQuery = query.trim().toLowerCase();
