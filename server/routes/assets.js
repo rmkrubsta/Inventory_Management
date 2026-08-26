@@ -9,7 +9,7 @@ router.get('/', async (req, res, next) => {
     const filter = search
       ? { $or: ['name', 'assetId', 'location', 'category'].map((field) => ({ [field]: new RegExp(search, 'i') })) }
       : {};
-    const assets = await Asset.find(filter).sort({ createdAt: -1 }).limit(100);
+    const assets = await Asset.find(filter).sort({ createdAt: -1 });
     res.json(assets);
   } catch (error) {
     next(error);

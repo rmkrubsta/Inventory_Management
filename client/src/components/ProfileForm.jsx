@@ -1,10 +1,11 @@
 import { X } from 'lucide-react';
 import { useState } from 'react';
+import { profilePhotoKey } from '../auth';
 
 export function ProfileForm({ user, onClose, onSave }) {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
-  const [photo, setPhoto] = useState(() => window.localStorage.getItem('assetflow.profilePhoto') || '');
+  const [photo, setPhoto] = useState(() => window.localStorage.getItem(profilePhotoKey(user.email)) || '');
   const [photoError, setPhotoError] = useState('');
 
   const choosePhoto = (event) => {
@@ -22,7 +23,7 @@ export function ProfileForm({ user, onClose, onSave }) {
 
   const submit = (event) => {
     event.preventDefault();
-    if (photo) window.localStorage.setItem('assetflow.profilePhoto', photo);
+    if (photo) window.localStorage.setItem(profilePhotoKey(email), photo);
     window.dispatchEvent(new Event('assetflow-profile-updated'));
     onSave({ name, email, photo });
   };

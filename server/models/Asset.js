@@ -4,6 +4,7 @@ const assetSchema = new mongoose.Schema(
   {
     assetId: { type: String, required: true, unique: true, trim: true },
     name: { type: String, required: true, trim: true },
+    purchaseCost: { type: Number, required: true, min: 0 },
     category: { type: String, required: true, trim: true },
     model: { type: String, trim: true },
     location: { type: String, required: true, trim: true },

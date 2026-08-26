@@ -3,13 +3,17 @@ import { Check, ClipboardCheck, Filter, Plus, Search, Wrench } from 'lucide-reac
 import { AssetForm } from './AssetForm';
 import { AssetReportForm } from './AssetReportForm';
 import { InvitePersonForm } from './InvitePersonForm';
-import { hasPermission } from '../auth';
+import { hasPermission, roleUsers } from '../auth';
 
-const initialPeople = [
-  { initials: 'RK', name: 'Riya Kumar', team: 'Admin', assets: 0, status: 'Active' },
-  { initials: 'LN', name: 'Lerato Ndlovu', team: 'Employee', assets: 18, status: 'Active' },
-  { initials: 'NP', name: 'Naledi Pillay', team: 'Manager', assets: 6, status: 'Active' }
-];
+const peopleFromAssets = (assets) => {
+  const assetCounts = assets.reduce((counts, asset) => {
+    if (asset.assignedTo) counts[asset.assignedTo] = (counts[asset.assignedTo] || 0) + 1;
+    return counts;
+  }, {});
+  const knownPeople = roleUsers.map((person) => ({ ...person, initials: person.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(), assets: assetCounts[person.name] || 0, status: 'Active' }));
+  const additionalPeople = Object.keys(assetCounts).filter((name) => !roleUsers.some((person) => person.name === name)).map((name) => ({ initials: name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(), name, team: 'Team member', assets: assetCounts[name], status: 'Active' }));
+  return [...knownPeople, ...additionalPeople];
+};
 
 const auditItems = [
   ['Missing assets', '6', 'Johannesburg HQ'],
@@ -17,22 +21,26 @@ const auditItems = [
   ['Unassigned assets', '5', 'Pretoria Office']
 ];
 
-export function ManagementView({ currentUser, view, assets, query, onQueryChange, onNotify, onAddAsset, onEditAsset, onDeleteAsset, audits, onScheduleAudit, maintenance, onLogMaintenance, onResolveMaintenance }) {
+export function ManagementView({ currentUser, view, assets, peopleAssets = assets, query, onQueryChange, onNotify, onAddAsset, onEditAsset, onDeleteAsset, audits, onScheduleAudit, maintenance, onLogMaintenance, onResolveMaintenance }) {
   const role = currentUser.role;
-  if (view === 'Assets') return <AssetsView assets={assets} query={query} onQueryChange={onQueryChange} onAddAsset={onAddAsset} onNotify={onNotify} />;
+  if (view === 'Assets') return <AssetsView currentUser={currentUser} assets={assets} query={query} onQueryChange={onQueryChange} onAddAsset={onAddAsset} onNotify={onNotify} />;
   if (view === 'Audits') return <AuditView onNotify={onNotify} audits={audits} onScheduleAudit={hasPermission(role, 'scheduleAudits') ? onScheduleAudit : null} />;
   if (view === 'Maintenance') return role === 'Employee' ? <EmployeeMaintenanceView assets={assets} maintenance={maintenance} currentUser={currentUser} onNotify={onNotify}/> : <MaintenanceView assets={assets} maintenance={maintenance} onLogMaintenance={onLogMaintenance} onResolveMaintenance={onResolveMaintenance} />;
-  return <PeopleView query={query} onQueryChange={onQueryChange} onNotify={onNotify} canInvite={hasPermission(role, 'managePeople')} />;
+  return <PeopleView assets={peopleAssets} query={query} onQueryChange={onQueryChange} onNotify={onNotify} canInvite={hasPermission(role, 'managePeople')} />;
 }
 
 function ViewHeading({ eyebrow, title, description, action, onAction }) {
   return <section className="view-heading"><div><label>{eyebrow}</label><h1>{title}</h1><p>{description}</p></div>{action && <button className="primary view-action" onClick={onAction}><Plus size={14}/>{action}</button>}</section>;
 }
 
-function AssetsView({ assets, query, onQueryChange, onAddAsset, onNotify }) {
+function AssetsView({ currentUser, assets, query, onQueryChange, onAddAsset, onNotify }) {
   const role = JSON.parse(window.localStorage.getItem('assetflow.currentUser') || '{"role":"Admin"}').role;
   if (role === 'Employee') return <EmployeeAssetsView assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/>;
   if (role === 'Manager') return <ManagerAssetsView assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/>;
+  return <><RequestAssetsView currentUser={currentUser} assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/><ApprovalRequestsView approverRole="Admin" assets={assets} onNotify={onNotify}/><AdminAssetsView assets={assets} query={query} onQueryChange={onQueryChange} onAddAsset={onAddAsset} onNotify={onNotify}/></>;
+}
+
+function AdminAssetsView({ assets, query, onQueryChange, onAddAsset, onNotify }) {
   const canManageAssets = hasPermission(role, 'manageAssets');
   const [managedAssets, setManagedAssets] = useState(assets);
   const [editingAsset, setEditingAsset] = useState(null);
@@ -44,8 +52,47 @@ function AssetsView({ assets, query, onQueryChange, onAddAsset, onNotify }) {
   return <>{editingAsset && canManageAssets && <AssetForm asset={editingAsset} onClose={() => setEditingAsset(null)} onSave={saveEditedAsset}/>} {deletingAsset && canManageAssets && <div className="modal-backdrop" role="presentation"><section className="asset-modal confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-asset-title"><div className="modal-head"><div><label>Asset register</label><h2 id="delete-asset-title">Delete asset?</h2></div></div><p>Are you sure you want to delete <strong>{deletingAsset.name}</strong> ({deletingAsset.assetId})? This action cannot be undone.</p><div className="modal-actions"><button type="button" onClick={() => setDeletingAsset(null)}>Cancel</button><button className="danger-button" type="button" onClick={deleteAsset}>Delete asset</button></div></section></div>}<ViewHeading eyebrow="Asset register" title="All assets" description={`${filteredAssets.length} assets match your current search.`} action={canManageAssets ? 'Add asset' : null} onAction={onAddAsset}/><section className="panel management-panel"><div className="toolbar"><div className="inline-search"><Search size={14}/><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Filter assets..." aria-label="Filter assets"/></div><button><Filter size={13}/> Status <span>⌄</span></button><button>Location <span>⌄</span></button></div><AssetRegister assets={filteredAssets} canManageAssets={canManageAssets} onEditAsset={setEditingAsset} onDeleteAsset={setDeletingAsset}/></section></>;
 }
 
-function ManagerAssetsView({ assets, query, onQueryChange, onNotify }) {
+function ApprovalRequestsView({ approverRole, assets, onNotify }) {
   const [requests, setRequests] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]'));
+  const approvableRequests = requests.filter((request) => approverRole === 'Admin' ? request.requestedByRole === 'Manager' : ['Admin', 'Employee'].includes(request.requestedByRole || 'Employee'));
+  const updateRequest = async (request, approved) => {
+    if (approved) {
+      const asset = assets.find((item) => item.assetId === request.assetId);
+      if (!asset) return onNotify(`${request.assetId} is no longer available`);
+      if (asset._id) {
+        const response = await fetch(`/api/assets/${asset._id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...asset, status: 'Assigned', assignedTo: request.requestedBy }) });
+        if (!response.ok) return onNotify(`Could not approve ${request.assetId}`);
+      }
+    }
+    const remaining = requests.filter((item) => item.id !== request.id);
+    setRequests(remaining);
+    window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(remaining));
+    onNotify(`${request.assetId} request ${approved ? 'approved' : 'declined'}`);
+  };
+  return <section className="panel manager-requests"><div className="panel-head"><div><label>{approverRole} approvals</label><h2>{approvableRequests.length} awaiting approval</h2></div></div>{approvableRequests.length ? approvableRequests.map((request) => <div className="manager-request" key={request.id}><div><strong>{request.assetName}</strong><small>{request.assetId} · requested by {request.requestedBy}</small></div><div className="manager-request-actions"><button onClick={() => updateRequest(request, true)}>Approve</button><button onClick={() => updateRequest(request, false)}>Decline</button></div></div>) : <p className="empty-state">No asset requests awaiting approval.</p>}</section>;
+}
+
+function RequestAssetsView({ currentUser, assets, query, onQueryChange, onNotify }) {
+  const availableAssets = assets.filter((asset) => asset.status?.toLowerCase() === 'available');
+  const [requestedAssets, setRequestedAssets] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]').filter((request) => request.requestedBy === currentUser.name).map((request) => request.assetId));
+  const requests = JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]');
+  const categoryEntitled = (asset) => assets.some((item) => item.assignedTo === currentUser.name && item.category === asset.category) || requests.some((request) => request.requestedBy === currentUser.name && request.category === asset.category);
+  const requestAsset = (asset) => {
+    if (categoryEntitled(asset)) return onNotify(`You already have or requested a ${asset.category} asset`);
+    const updatedRequests = [...requests, { id: `${asset.assetId}-${Date.now()}`, assetId: asset.assetId, assetName: asset.name, category: asset.category, requestedBy: currentUser.name, requestedByRole: currentUser.role }];
+    window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(updatedRequests));
+    setRequestedAssets((current) => [...current, asset.assetId]);
+    onNotify(`Request sent for ${asset.assetId}`);
+  };
+  const visibleAssets = assets.filter((asset) => `${asset.name} ${asset.assetId} ${asset.location} ${asset.category}`.toLowerCase().includes(query.trim().toLowerCase()));
+  return <section className="panel management-panel request-assets-panel"><ViewHeading eyebrow={`${currentUser.role} self-service`} title="Request an asset" description="Request one available asset per category for approval."/><div className="employee-asset-list">{visibleAssets.length ? visibleAssets.map((asset) => { const isAvailable = asset.status?.toLowerCase() === 'available'; const isRequested = requestedAssets.includes(asset.assetId); const isEntitled = categoryEntitled(asset); return <article className="employee-asset-row" key={asset.assetId}><div><strong>{asset.name}</strong><small>{asset.assetId} · {asset.location} · {asset.category}</small></div><span className={`status ${asset.status.toLowerCase()}`}>{asset.status}</span><div className="employee-actions"><button disabled={!isAvailable || isRequested || isEntitled} onClick={() => requestAsset(asset)}>{isRequested ? 'Requested' : isEntitled ? 'Entitled' : isAvailable ? 'Request asset' : 'Unavailable'}</button></div></article>; }) : <p className="empty-state">No assets match your search.</p>}</div></section>;
+}
+
+function ManagerAssetsView({ assets, query, onQueryChange, onNotify }) {
+  const currentUser = JSON.parse(window.localStorage.getItem('assetflow.currentUser') || '{"name":"Manager","role":"Manager"}');
+  const requestView = <RequestAssetsView currentUser={currentUser} assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/>;
+  const [requests, setRequests] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]'));
+  const approvableRequests = requests.filter((request) => ['Admin', 'Employee'].includes(request.requestedByRole || 'Employee'));
   const [managedAssets, setManagedAssets] = useState(assets);
   const visibleAssets = managedAssets.filter((asset) => `${asset.name} ${asset.assetId} ${asset.location}`.toLowerCase().includes(query.trim().toLowerCase()));
   const availableAssets = visibleAssets.filter((asset) => asset.status === 'Available');
@@ -64,7 +111,7 @@ function ManagerAssetsView({ assets, query, onQueryChange, onNotify }) {
     onNotify(`${request.assetId} approved for ${request.requestedBy}`);
   };
   const rejectRequest = (request) => { const remaining = requests.filter((item) => item.id !== request.id); setRequests(remaining); window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(remaining)); onNotify(`${request.assetId} request declined`); };
-  return <><ViewHeading eyebrow="Manager workspace" title="Asset approvals" description="Review requests and track who has approved assets."/><section className="manager-grid"><article className="panel manager-requests"><div className="panel-head"><div><label>Pending requests</label><h2>{requests.length} awaiting approval</h2></div></div>{requests.length ? requests.map((request) => <div className="manager-request" key={request.id}><div><strong>{request.assetName}</strong><small>{request.assetId} · requested by {request.requestedBy}</small></div><div className="manager-request-actions"><button onClick={() => approveRequest(request)}>Approve</button><button onClick={() => rejectRequest(request)}>Decline</button></div></div>) : <p className="empty-state">No asset requests awaiting approval.</p>}</article><article className="panel manager-available"><div className="panel-head"><div><label>Available assets</label><h2>{availableAssets.length} ready to assign</h2></div><div className="inline-search"><Search size={14}/><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search assets..." aria-label="Search assets"/></div></div><AssetRegister assets={availableAssets} canManageAssets={false}/></article></section><section className="panel manager-assigned"><div className="panel-head"><div><label>Approved assignments</label><h2>Who has what</h2></div></div><AssetRegister assets={visibleAssets.filter((asset) => asset.assignedTo)} canManageAssets={false}/></section></>;
+  return <>{requestView}<ViewHeading eyebrow="Manager workspace" title="Asset approvals" description="Review requests and track who has approved assets."/><section className="manager-grid"><article className="panel manager-requests"><div className="panel-head"><div><label>Pending requests</label><h2>{approvableRequests.length} awaiting approval</h2></div></div>{approvableRequests.length ? approvableRequests.map((request) => <div className="manager-request" key={request.id}><div><strong>{request.assetName}</strong><small>{request.assetId} · requested by {request.requestedBy}</small></div><div className="manager-request-actions"><button onClick={() => approveRequest(request)}>Approve</button><button onClick={() => rejectRequest(request)}>Decline</button></div></div>) : <p className="empty-state">No asset requests awaiting approval.</p>}</article><article className="panel manager-available"><div className="panel-head"><div><label>Available assets</label><h2>{availableAssets.length} ready to assign</h2></div><div className="inline-search"><Search size={14}/><input value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search assets..." aria-label="Search assets"/></div></div><AssetRegister assets={availableAssets} canManageAssets={false}/></article></section><section className="panel manager-assigned"><div className="panel-head"><div><label>Approved assignments</label><h2>Who has what</h2></div></div><AssetRegister assets={visibleAssets.filter((asset) => asset.assignedTo)} canManageAssets={false}/></section></>;
 }
 
 function EmployeeAssetsView({ assets, query, onQueryChange, onNotify }) {
@@ -72,10 +119,14 @@ function EmployeeAssetsView({ assets, query, onQueryChange, onNotify }) {
   const currentUser = JSON.parse(window.localStorage.getItem('assetflow.currentUser') || '{"name":"Employee"}');
   const [requestedAssets, setRequestedAssets] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]').filter((request) => request.requestedBy === currentUser.name).map((request) => request.assetId));
   const availableAssets = assets.filter((asset) => asset.status?.toLowerCase() === 'available');
-  const visibleAssets = assets.filter((asset) => `${asset.name} ${asset.assetId} ${asset.location} ${asset.category}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const visibleAssets = assets.filter((asset) => {
+    const isOwnedStatus = ['assigned', 'maintenance'].includes(asset.status?.toLowerCase());
+    const isOwnedByEmployee = asset.assignedTo === currentUser.name;
+    return (!isOwnedStatus || isOwnedByEmployee) && `${asset.name} ${asset.assetId} ${asset.location} ${asset.category}`.toLowerCase().includes(query.trim().toLowerCase());
+  });
   const requests = JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]');
   const categoryEntitled = (asset) => assets.some((item) => item.assignedTo === currentUser.name && item.category === asset.category) || requests.some((request) => request.requestedBy === currentUser.name && request.category === asset.category);
-  const requestAsset = (asset) => { if (categoryEntitled(asset)) return onNotify(`You already have or requested a ${asset.category} asset`); if (requests.some((request) => request.assetId === asset.assetId && request.requestedBy === currentUser.name)) return onNotify(`${asset.assetId} already requested`); requests.push({ id: `${asset.assetId}-${Date.now()}`, assetId: asset.assetId, assetName: asset.name, category: asset.category, requestedBy: currentUser.name }); window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(requests)); setRequestedAssets((current) => [...current, asset.assetId]); onNotify(`Request sent for ${asset.assetId}`); };
+  const requestAsset = (asset) => { if (categoryEntitled(asset)) return onNotify(`You already have or requested a ${asset.category} asset`); if (requests.some((request) => request.assetId === asset.assetId && request.requestedBy === currentUser.name)) return onNotify(`${asset.assetId} already requested`); requests.push({ id: `${asset.assetId}-${Date.now()}`, assetId: asset.assetId, assetName: asset.name, category: asset.category, requestedBy: currentUser.name, requestedByRole: currentUser.role }); window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(requests)); setRequestedAssets((current) => [...current, asset.assetId]); onNotify(`Request sent for ${asset.assetId}`); };
   const reportAsset = async ({ type, details }) => {
     const status = type === 'Stolen' ? 'Lost' : 'Maintenance';
     if (!reportingAsset._id) { setReportingAsset(null); return onNotify(`${reportingAsset.assetId} reported as ${type.toLowerCase()}`); }
@@ -94,13 +145,13 @@ function EmployeeMaintenanceView({ assets, maintenance, currentUser, onNotify })
 }
 
 function AssetRegister({ assets, canManageAssets, onEditAsset, onDeleteAsset }) {
-  return <div className="table-wrap"><table className="management-table"><thead><tr><th>Asset</th><th>Category</th><th>Location</th><th>Assigned to</th><th>Status</th><th>Added</th>{canManageAssets && <th>Actions</th>}</tr></thead><tbody>{assets.length ? assets.map((asset) => <tr key={asset.assetId}><td><b>{asset.name}<small>{asset.assetId} · {asset.model || 'No model'}</small></b></td><td>{asset.category}</td><td>{asset.location}</td><td>{asset.assignedTo || 'Unassigned'}</td><td><span className={`status ${asset.status.toLowerCase()}`}>{asset.status}</span></td><td>{asset.added || 'Recently'}</td>{canManageAssets && <td className="asset-actions"><button onClick={() => onEditAsset(asset)}>Edit</button><button onClick={() => onDeleteAsset(asset)}>Delete</button></td>}</tr>) : <tr><td colSpan={canManageAssets ? '7' : '6'} className="empty-state">No assets match your search.</td></tr>}</tbody></table></div>;
+  return <div className="table-wrap"><table className="management-table"><thead><tr><th>Asset</th><th>Category</th><th>Location</th><th>Price</th><th>Assigned to</th><th>Status</th><th>Added</th>{canManageAssets && <th>Actions</th>}</tr></thead><tbody>{assets.length ? assets.map((asset) => <tr key={asset.assetId}><td><b>{asset.name}<small>{asset.assetId} · {asset.model || 'No model'}</small></b></td><td>{asset.category}</td><td>{asset.location}</td><td>{Number.isFinite(Number(asset.purchaseCost)) ? `R${Number(asset.purchaseCost).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Not available'}</td><td>{asset.assignedTo || 'Unassigned'}</td><td><span className={`status ${asset.status.toLowerCase()}`}>{asset.status}</span></td><td>{asset.added || 'Recently'}</td>{canManageAssets && <td className="asset-actions"><button onClick={() => onEditAsset(asset)}>Edit</button><button onClick={() => onDeleteAsset(asset)}>Delete</button></td>}</tr>) : <tr><td colSpan={canManageAssets ? '8' : '7'} className="empty-state">No assets match your search.</td></tr>}</tbody></table></div>;
 }
 
 function AuditView({ onNotify, audits, onScheduleAudit }) {
   const reviewAudit = (audit) => onNotify(`Reviewing ${audit.name} at ${audit.location} · ${audit.status}`);
   const reviewException = (name, count, location) => onNotify(`Reviewing ${name}: ${count} cases at ${location}`);
-  return <><ViewHeading eyebrow="Control center" title="Audits" description="Track physical verification and resolve inventory exceptions." action="Schedule audit" onAction={onScheduleAudit}/><section className="audit-view-grid"><article className="panel audit-status-card"><div className="audit-status-top"><div className="large-score">86<span>/100</span></div><div><label>Quarterly readiness</label><h2>Good standing</h2><p>1,142 assets are included in the next review.</p></div></div><div className="audit-progress"><span style={{ width: '86%' }}></span></div><small>86% verified · Last scan 21 Aug 2026</small><button className="primary" onClick={() => onNotify('QR scanner workspace opened')}><ClipboardCheck size={14}/>Start QR scan</button></article><article className="panel exceptions-card"><div className="panel-head"><div><label>Upcoming audits</label><h2>{audits.length ? `${audits.length} scheduled` : 'No audits scheduled'}</h2></div><button className="link" onClick={() => onNotify('All exceptions marked for review')}>Review exceptions</button></div>{audits.length ? audits.map((audit) => <div className="exception-item" key={audit._id}><span className="exception-marker"></span><div><strong>{audit.name}</strong><small>{audit.location} · {audit.auditor}</small></div><b>{new Date(audit.scheduledFor).toLocaleDateString('en-ZA', { day: '2-digit', month: 'short' })}</b><span className="status available">{audit.status}</span><button onClick={() => reviewAudit(audit)}>Review</button></div>) : auditItems.map(([name, count, location]) => <div className="exception-item" key={name}><span className="exception-marker"></span><div><strong>{name}</strong><small>{location}</small></div><b>{count}</b><button onClick={() => reviewException(name, count, location)}>Review</button></div>)}</article></section></>;
+  return <><ViewHeading eyebrow="Control center" title="Audits" description="Track physical verification and resolve inventory exceptions." action="Schedule audit" onAction={onScheduleAudit}/><section className="audit-view-grid"><article className="panel audit-status-card"><div className="audit-status-top"><div className="large-score">86<span>/100</span></div><div><label>Quarterly readiness</label><h2>Good standing</h2><p>1,142 assets are included in the next review.</p></div></div><div className="audit-progress"><span style={{ width: '86%' }}></span></div><small>86% verified · Last scan 21 Aug 2026</small><button className="primary" onClick={() => onNotify('QR scanner workspace opened')}><ClipboardCheck size={14}/>Start QR scan</button></article><article className="panel exceptions-card"><div className="panel-head"><div><label>Upcoming audits</label><h2>{audits.length ? `${audits.length} scheduled` : 'No audits scheduled'}</h2></div><button className="link" onClick={() => onNotify('All exceptions marked for review')}>Review exceptions</button></div>{audits.length ? audits.map((audit) => <div className="exception-item" key={audit._id}><span className="exception-marker"></span><div><strong>{audit.name}</strong><small>{audit.location} · {audit.auditor}</small></div><b>{new Date(audit.scheduledFor).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</b><span className="status available">{audit.status}</span><button onClick={() => reviewAudit(audit)}>Review</button></div>) : auditItems.map(([name, count, location]) => <div className="exception-item" key={name}><span className="exception-marker"></span><div><strong>{name}</strong><small>{location}</small></div><b>{count}</b><button onClick={() => reviewException(name, count, location)}>Review</button></div>)}</article></section></>;
 }
 
 function MaintenanceView({ assets, maintenance, onLogMaintenance, onResolveMaintenance }) {
@@ -115,10 +166,11 @@ function MaintenanceView({ assets, maintenance, onLogMaintenance, onResolveMaint
   return <><ViewHeading eyebrow="Service desk" title="Maintenance" description="Monitor repairs and keep critical assets operational." action="Log maintenance" onAction={onLogMaintenance}/><section className="panel management-panel"><div className="panel-head"><div><label>Open work orders</label><h2>{workOrders.filter((workOrder) => workOrder.status !== 'Resolved').length} active cases</h2></div><span className="maintenance-summary"><Wrench size={14}/> Preventive review due: 4</span></div><div className="maintenance-list">{workOrders.length ? workOrders.map((workOrder) => <div className="maintenance-row" key={workOrder._id || workOrder.assetId}><div className="maintenance-icon"><Wrench size={15}/></div><div><strong>{workOrder.assetName}</strong><small>{workOrder.assetId} · {workOrder.location}</small></div><span className="maintenance-issue">{workOrder.issue}</span><span className="status maintenance">{workOrder.status}</span><button onClick={() => resolveWorkOrder(workOrder)} disabled={workOrder.status === 'Resolved'} aria-label={`Resolve ${workOrder.assetId}`}><Check size={14}/></button></div>) : <p className="empty-state">No maintenance work orders yet.</p>}</div></section></>;
 }
 
-function PeopleView({ query, onQueryChange, onNotify, canInvite }) {
-  const [people, setPeople] = useState(initialPeople);
+function PeopleView({ assets, query, onQueryChange, onNotify, canInvite }) {
+  const [people, setPeople] = useState(() => peopleFromAssets(assets));
   const [showInviteForm, setShowInviteForm] = useState(false);
   useEffect(() => { const openInvite = () => setShowInviteForm(true); window.addEventListener('assetflow-open-invite', openInvite); return () => window.removeEventListener('assetflow-open-invite', openInvite); }, []);
+  useEffect(() => setPeople((currentPeople) => peopleFromAssets(assets).map((person) => currentPeople.find((currentPerson) => currentPerson.email === person.email || currentPerson.name === person.name) || person)), [assets]);
   const normalizedQuery = query.trim().toLowerCase();
   const filteredPeople = people.filter((person) => `${person.name} ${person.team} ${person.status}`.toLowerCase().includes(normalizedQuery));
   const [selectedPerson, setSelectedPerson] = useState(filteredPeople[0] || null);

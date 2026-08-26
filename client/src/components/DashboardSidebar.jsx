@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, Boxes, LayoutDashboard, ScanLine, Settings2, Users, Wrench } from 'lucide-react';
 import { ProfileForm } from './ProfileForm';
-import { roleViews } from '../auth';
+import { profilePhotoKey, roleViews } from '../auth';
 
 const allNavigation = [[LayoutDashboard, 'Overview'], [Boxes, 'Assets'], [ScanLine, 'Audits'], [Wrench, 'Maintenance'], [Users, 'People & teams']];
 
 export function DashboardSidebar({ activeView, onNavigate, onNotify, onManageProfile }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(false);
-  const [photo, setPhoto] = useState(() => window.localStorage.getItem('assetflow.profilePhoto') || '');
-  useEffect(() => { const updatePhoto = () => setPhoto(window.localStorage.getItem('assetflow.profilePhoto') || ''); window.addEventListener('assetflow-profile-updated', updatePhoto); return () => window.removeEventListener('assetflow-profile-updated', updatePhoto); }, []);
   const currentUser = JSON.parse(window.localStorage.getItem('assetflow.currentUser') || '{"name":"Riya Kumar","email":"riya.kumar@acmepartners.com","role":"Admin"}');
+  const [photo, setPhoto] = useState(() => window.localStorage.getItem(profilePhotoKey(currentUser.email)) || '');
+  useEffect(() => { const updatePhoto = () => setPhoto(window.localStorage.getItem(profilePhotoKey(currentUser.email)) || ''); window.addEventListener('assetflow-profile-updated', updatePhoto); return () => window.removeEventListener('assetflow-profile-updated', updatePhoto); }, [currentUser.email]);
   const role = currentUser.role;
   const initials = currentUser.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   const navigation = allNavigation.filter(([, name]) => roleViews[role]?.includes(name));
