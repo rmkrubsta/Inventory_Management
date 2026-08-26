@@ -18,7 +18,8 @@ function validateEnv() {
   return {
     PORT: getEnv('PORT') || '5000',
     CLIENT_URL: getEnv('CLIENT_URL') || 'http://localhost:5173',
-    MONGODB_URI: getEnv('MONGODB_URI')
+    MONGODB_URI: getEnv('MONGODB_URI'),
+    MONGODB_DB_NAME: getEnv('MONGODB_DB_NAME') || undefined
   };
 }
 

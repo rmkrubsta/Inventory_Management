@@ -23,7 +23,7 @@ app.use((error, _req, res, _next) => {
 
 async function start() {
   try {
-    await mongoose.connect(env.MONGODB_URI);
+    await mongoose.connect(env.MONGODB_URI, { dbName: env.MONGODB_DB_NAME });
     app.listen(port, () => console.log(`AssetFlow API running on port ${port}`));
   } catch (error) {
     console.error(`MongoDB connection failed: ${error.message}`);

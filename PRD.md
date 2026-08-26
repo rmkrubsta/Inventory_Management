@@ -45,7 +45,7 @@ Approved department or site transfers preserve movement history. Employees can r
 Support corrective and preventive maintenance, service history, scheduled reminders, and maintenance costs. Preventive schedules may be usage-based or time-based, such as a vehicle every 10,000 km, a generator every six months, or an annual laptop battery review. Support asset valuation, depreciation, and finance reporting.
 
 ## 6. Roles and security
-Roles: Admin, Asset Manager, Employee, Procurement Officer, Finance, Auditor, and Manager.  
+Roles: Admin, Manager, and Employee.
 Required controls: SSO, Azure AD, MFA, RBAC, encryption at rest and in transit, audit logs, and session management.
 
 ## 7. Dashboards and AI

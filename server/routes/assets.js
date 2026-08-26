@@ -25,4 +25,34 @@ router.post('/', async (req, res, next) => {
   }
 });
 
+router.put('/:id', async (req, res, next) => {
+  try {
+    const asset = await Asset.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!asset) return res.status(404).json({ error: 'Asset not found.' });
+    res.json(asset);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/:id/report', async (req, res, next) => {
+  try {
+    const asset = await Asset.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true, runValidators: true });
+    if (!asset) return res.status(404).json({ error: 'Asset not found.' });
+    res.json({ asset, report: { type: req.body.type, details: req.body.details } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const asset = await Asset.findByIdAndDelete(req.params.id);
+    if (!asset) return res.status(404).json({ error: 'Asset not found.' });
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

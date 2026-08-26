@@ -27,6 +27,7 @@ router.patch('/:id/resolve', async (req, res, next) => {
   try {
     const workOrder = await Maintenance.findByIdAndUpdate(req.params.id, { status: 'Resolved' }, { new: true });
     if (!workOrder) return res.status(404).json({ error: 'Maintenance work order not found.' });
+    await Asset.updateOne({ assetId: workOrder.assetId }, { $set: { status: 'Available' } });
     res.json(workOrder);
   } catch (error) {
     next(error);
