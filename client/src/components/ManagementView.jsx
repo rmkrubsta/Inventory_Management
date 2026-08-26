@@ -37,10 +37,10 @@ function AssetsView({ currentUser, assets, query, onQueryChange, onAddAsset, onN
   const role = JSON.parse(window.localStorage.getItem('assetflow.currentUser') || '{"role":"Admin"}').role;
   if (role === 'Employee') return <EmployeeAssetsView assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/>;
   if (role === 'Manager') return <ManagerAssetsView assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/>;
-  return <><RequestAssetsView currentUser={currentUser} assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/><ApprovalRequestsView approverRole="Admin" assets={assets} onNotify={onNotify}/><AdminAssetsView assets={assets} query={query} onQueryChange={onQueryChange} onAddAsset={onAddAsset} onNotify={onNotify}/></>;
+  return <><RequestAssetsView currentUser={currentUser} assets={assets} query={query} onQueryChange={onQueryChange} onNotify={onNotify}/><ApprovalRequestsView approverRole="Admin" assets={assets} onNotify={onNotify}/><AdminAssetsView role={currentUser.role} assets={assets} query={query} onQueryChange={onQueryChange} onAddAsset={onAddAsset} onNotify={onNotify}/></>;
 }
 
-function AdminAssetsView({ assets, query, onQueryChange, onAddAsset, onNotify }) {
+function AdminAssetsView({ role, assets, query, onQueryChange, onAddAsset, onNotify }) {
   const canManageAssets = hasPermission(role, 'manageAssets');
   const [managedAssets, setManagedAssets] = useState(assets);
   const [editingAsset, setEditingAsset] = useState(null);

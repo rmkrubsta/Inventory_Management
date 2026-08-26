@@ -45,7 +45,7 @@ function App() {
     fetch('/api/maintenance').then((response) => response.ok ? response.json() : []).then(setMaintenance).catch(() => {});
   }, []);
 
-  const notify = (text) => { setMessage(text); if (text === 'Invitation form opened') window.dispatchEvent(new Event('assetflow-open-invite')); window.setTimeout(() => setMessage(''), 2400); };
+  const notify = (text) => { if (text === 'Report export queued') return exportReport(); setMessage(text); if (text === 'Invitation form opened') window.dispatchEvent(new Event('assetflow-open-invite')); window.setTimeout(() => setMessage(''), 2400); };
   useEffect(() => {
     window.history.replaceState({ ...window.history.state, assetflowView: activeView }, '', window.location.href);
     const handlePopState = (event) => { if (event.state?.assetflowView) { setActiveView(event.state.assetflowView); setViewHistory([]); } };
@@ -60,6 +60,22 @@ function App() {
   const addAsset = (asset) => { setAssets((currentAssets) => [asset, ...currentAssets]); setShowAssetForm(false); notify(`${asset.assetId} added successfully`); };
   const addAudit = (audit) => { setAudits((currentAudits) => [...currentAudits, audit].sort((first, second) => new Date(first.scheduledFor) - new Date(second.scheduledFor))); setShowAuditForm(false); notify('Audit scheduled successfully'); };
   const addMaintenance = (workOrder) => { setMaintenance((currentWorkOrders) => [workOrder, ...currentWorkOrders]); setShowMaintenanceForm(false); notify('Maintenance logged successfully'); };
+  const exportReport = () => {
+    const columns = ['Asset ID', 'Name', 'Model', 'Category', 'Location', 'Purchase Cost', 'Assigned To', 'Status', 'Added'];
+    const escapeCsvValue = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const rows = assets.map((asset) => [asset.assetId, asset.name, asset.model, asset.category, asset.location, asset.purchaseCost, asset.assignedTo, asset.status, asset.added]);
+    const csv = [columns, ...rows].map((row) => row.map(escapeCsvValue).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `assetflow-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+    notify(`Report exported: ${assets.length} assets`);
+  };
   const resolveMaintenance = async (workOrder) => {
     if (!workOrder._id || workOrder._id.startsWith('AST-')) return notify(`${workOrder.assetId} marked as resolved`);
     const response = await fetch(`/api/maintenance/${workOrder._id}/resolve`, { method: 'PATCH' });
