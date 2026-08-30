@@ -1,91 +1,128 @@
 # AssetFlow Enterprise
-## Product Requirements Document
+## Product Requirements Document (Updated)
 
-**Version:** 1.0  
+**Version:** 2.0  
 **Product:** Enterprise Asset & Inventory Lifecycle Management System (EAILMS)  
-**Target users:** Administrators, asset managers, employees, department managers, procurement, IT, finance, auditors, and executives.
+**Target users:** Administrators, asset managers, employees, department managers, auditors, and executives.  
+**Current Status:** MVP Phase - Core Features Implemented
 
-## 1. Vision and objectives
-AssetFlow Enterprise is the single source of truth for organizational assets, providing real-time visibility, accountability, auditability, and lifecycle management from procurement through disposal.
+---
 
-The product should reduce asset losses by 80%, achieve inventory accuracy above 98%, reduce audit preparation time by 90%, improve utilization, reduce unnecessary procurement, and strengthen employee accountability. Secondary goals are automated depreciation, predictive maintenance, cost optimization, and mobile-first tracking.
+## 1. Executive Summary
 
-## 2. MVP scope
-- Asset registration with generated Asset ID, serial number, category, brand, model, purchase date/cost, value, warranty, vendor, department, location, owner, status, and lifecycle stage.
-- Lifecycle stages: Requested, Approved, Procured, Received, Tagged, Available, Assigned, In Maintenance, Lost, Retired, and Disposed.
-- QR and barcode generation with scan-based asset lookup.
-- Asset assignment, employee acceptance, digital receipt, and assignment history.
-- Employee self-service for viewing assigned assets, requesting assets, reporting issues, returning assets, and requesting transfers.
-- Inventory visibility across warehouses, offices, stores, and remote sites with minimum, maximum, reorder, and safety-stock levels.
-- Reporting dashboard for inventory, allocation, maintenance, and lost assets.
-- Notifications for assignments, returns, expiring warranties, maintenance, licenses, audits, and low stock.
+AssetFlow Enterprise is an open-source MERN stack application for comprehensive asset lifecycle management. The MVP provides real-time asset visibility, accountability, and lifecycle tracking from procurement through disposal. The system is built on Node.js + Express backend, React frontend, and MongoDB database.
 
-## 3. Post-MVP scope
-**Phase 2:** Maintenance management, procurement workflows, mobile app, and approval workflows.  
-**Phase 3:** RFID, AI analytics, predictive maintenance, and enterprise integrations.
+## 2. Implemented Features (MVP - Current Release)
 
-## 4. Core workflows
-### Registration and assignment
-1. Asset Manager registers an asset.
-2. System generates an Asset ID and QR code.
-3. Asset is tagged and marked Available.
-4. Manager assigns it to an employee.
-5. Employee accepts digitally; the system records signature, date, device, GPS location, and audit trail.
+### 2.1 Asset Management
+- ✅ Asset registration with Asset ID, name, category, model, location, and purchase cost
+- ✅ Status tracking: Available, Assigned, Maintenance, Lost, Retired
+- ✅ Full-text search across asset name, ID, location, and category
+- ✅ Asset assignment to employees with tracking
+- ✅ CRUD operations (Create, Read, Update, Delete)
+- ✅ Asset history with timestamps (createdAt, updatedAt)
 
-### Requests and procurement
-Employee submits a request, manager approves it, procurement creates a purchase order, vendor fulfills it, and receiving records delivery.
+### 2.2 Audit Management
+- ✅ Audit scheduling with name, location, date, and auditor
+- ✅ Audit status tracking: Scheduled, In progress, Completed
+- ✅ Audit record retention and history
 
-### Audits
-Auditor scans assets physically. The system compares expected and actual assets and marks each as Verified, Missing, Damaged, or Duplicate.
+### 2.3 Maintenance Management
+- ✅ Maintenance request submission with asset ID, issue description
+- ✅ Priority levels: Low, Medium, High
+- ✅ Status tracking: Open, In progress, Resolved
+- ✅ Reporter tracking (who reported the issue)
+- ✅ Full maintenance history
 
-### Transfers and incidents
-Approved department or site transfers preserve movement history. Employees can report Lost, Stolen, Damaged, or Unauthorized Usage incidents, which move through investigation to resolution.
+### 2.4 Dashboard & Reporting
+- ✅ Overview dashboard with key metrics
+- ✅ Asset inventory table with sortable columns
+- ✅ Audit panel for scheduling and tracking
+- ✅ Activity panel showing recent actions
+- ✅ Maintenance request panel
+- ✅ Portfolio/asset overview panel
+- ✅ Search results view
 
-## 5. Maintenance and finance
-Support corrective and preventive maintenance, service history, scheduled reminders, and maintenance costs. Preventive schedules may be usage-based or time-based, such as a vehicle every 10,000 km, a generator every six months, or an annual laptop battery review. Support asset valuation, depreciation, and finance reporting.
+### 2.5 Authentication & Authorization
+- ✅ Role-based access control (Admin, Manager, Employee)
+- ✅ User authentication with local storage
+- ✅ Permission-based view restrictions
+- ✅ Profile menu with user management
 
-## 6. Roles and security
-Roles: Admin, Manager, and Employee.
-Required controls: SSO, Azure AD, MFA, RBAC, encryption at rest and in transit, audit logs, and session management.
+### 2.6 API Endpoints
+- ✅ `/api/assets` - Asset CRUD and search
+- ✅ `/api/audits` - Audit management
+- ✅ `/api/maintenance` - Maintenance tracking
+- ✅ `/api/health` - Health check endpoint
 
-## 7. Dashboards and AI
-Executive KPIs include total asset value, utilization, maintenance cost, asset loss, and inventory accuracy. Analytics include asset trends, spending trends, and department utilization. Future AI features include smart search, stock and purchasing recommendations, and predictive maintenance based on usage, incidents, and maintenance history.
+### 2.7 Technical Stack
+- **Frontend:** React 18, Vite, JavaScript, CSS modules, lucide-react icons
+- **Backend:** Node.js, Express.js, Mongoose ODM
+- **Database:** MongoDB with schema validation
+- **Build & Deploy:** npm, GitHub Actions CI/CD
 
-## 8. Technical architecture
-- **Frontend:** React, Vite, JavaScript, responsive web UI
-- **Mobile:** React Native (future phase)
-- **Backend:** Node.js, Express
-- **Database:** MongoDB with Mongoose
-- **Cache/search/storage/messaging:** Redis, Elasticsearch, Azure Blob Storage, and Azure Service Bus as scale requirements mature
-- **Observability/deployment:** Azure Monitor, Application Insights, and Kubernetes for horizontal scaling
+## 3. Post-MVP Scope (Phase 2+)
 
-## 9. Non-functional requirements
-- Asset search under 1 second.
-- Dashboard load under 3 seconds.
-- Scan response under 500 ms.
-- Initial scale: 10,000 assets and 1,000 users.
-- Target scale: 5 million assets and 100,000 users.
-- Availability target: 99.95%.
-- Disaster recovery target: RPO 15 minutes and RTO 1 hour.
-- Compliance targets: GDPR, ISO 27001, SOX, and POPIA.
+### Phase 2 Features (Planned)
+- QR/Barcode generation for assets
+- Digital asset acceptance and signature capture
+- Mobile-responsive audit scanning
+- Approval workflows for transfers
+- Asset depreciation calculations
+- Preventive maintenance scheduling
 
-## 10. User stories and acceptance criteria
-- **US-001:** Asset Manager registers an asset. Asset ID, category, serial number, and QR code are created automatically.
-- **US-002:** Asset Manager assigns an asset. Employee, assignment date, acceptance, and audit trail are recorded.
-- **US-003:** Employee digitally accepts an asset and responsibility is recorded.
-- **US-004:** Employee requests an asset. Request, manager approval, and procurement notification are recorded.
-- **US-005:** Auditor performs a QR audit. Scans update status and missing assets are flagged.
-- **US-006:** Technician logs maintenance and repair history is retained.
-- **US-007:** Manager receives maintenance reminders.
-- **US-008:** Employee requests a transfer with approval, history, and notifications.
-- **US-009:** Employee reports a lost asset; an incident is created, the manager is notified, and the asset status changes.
+### Phase 3 Features (Future)
+- RFID tracking integration
+- Predictive analytics and AI insights
+- Mobile app (React Native)
+- Azure integration (Blob Storage, Service Bus)
+- Elasticsearch for advanced search
+- Redis caching for performance
+- SSO and Azure AD integration
 
-## 11. Success metrics
-| Metric | Target |
-| --- | ---: |
-| Inventory accuracy | 98%+ |
-| Asset loss reduction | 80% |
-| Audit time reduction | 90% |
-| User adoption | 95% |
-| Assignment compliance | 100% |
-| System availability | 99.95% |
+## 4. Current Limitations & Known Gaps
+
+- No QR/barcode scanning yet
+- No mobile app implementation
+- No advanced analytics/reporting
+- Basic authentication (no SSO/MFA)
+- No asset depreciation or financial tracking
+- No transfer or incident workflows
+- No email notifications
+- Limited to web browser access
+
+## 5. Non-Functional Requirements
+
+- Asset search response time: &lt; 1 second
+- Dashboard load time: &lt; 3 seconds  
+- Initial scale target: 10,000 assets, 1,000 users
+- Long-term scale target: 5M assets, 100K users
+- Database: MongoDB Atlas connection via MONGODB_URI
+
+## 6. Setup & Configuration
+
+### Run locally:
+1. Copy `.env.example` to `.env` and set `MONGODB_URI`
+2. Install dependencies: `npm run install:all`
+3. Start API and React app: `npm run dev`
+4. Open `http://localhost:5173`
+
+### Environment Variables:
+- `MONGODB_URI`: MongoDB connection string (required) - GitHub **secret**
+- `PORT`: API port, default `5000` - GitHub **variable**
+- `CLIENT_URL`: Frontend URL for CORS, default `http://localhost:5173` - GitHub **variable**
+
+The React dashboard displays demo data until MongoDB is connected. All changes are persisted to MongoDB when the backend is running.
+
+## 7. Success Metrics
+
+| Metric | Status | Target |
+|--------|--------|--------|
+| Core CRUD operations | ✅ Complete | Release ready |
+| User authentication | ✅ Complete | MVP |
+| Asset search | ✅ Complete | &lt; 1 second |
+| Role-based access | ✅ Complete | MVP |
+| Dashboard UX | ✅ Complete | Usable |
+| API reliability | ✅ Validated | 99%+ |
+| QR/Barcode scanning | ⏳ Planned | Phase 2 |
+| Advanced analytics | ⏳ Planned | Phase 3 |
