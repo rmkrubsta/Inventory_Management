@@ -68,14 +68,14 @@ function ApprovalRequestsView({ approverRole, assets, onNotify }) {
 
 function RequestAssetsView({ currentUser, assets, query, onQueryChange, onNotify }) {
   const availableAssets = assets.filter((asset) => asset.status?.toLowerCase() === 'available');
-  const [requestedAssets, setRequestedAssets] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]').filter((request) => request.requestedBy === currentUser.name).map((request) => request.assetId));
-  const requests = JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]');
+  const [requests, setRequests] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]'));
+  const requestedAssets = requests.filter((request) => request.requestedBy === currentUser.name).map((request) => request.assetId);
   const categoryEntitled = (asset) => assets.some((item) => item.assignedTo === currentUser.name && item.category === asset.category) || requests.some((request) => request.requestedBy === currentUser.name && request.category === asset.category);
   const requestAsset = (asset) => {
     if (categoryEntitled(asset)) return onNotify(`You already have or requested a ${asset.category} asset`);
-    const updatedRequests = [...requests, { id: `${asset.assetId}-${Date.now()}`, assetId: asset.assetId, assetName: asset.name, category: asset.category, requestedBy: currentUser.name, requestedByRole: currentUser.role }];
-    window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(updatedRequests));
-    setRequestedAssets((current) => [...current, asset.assetId]);
+    const nextRequests = [...requests, { id: `${asset.assetId}-${Date.now()}`, assetId: asset.assetId, assetName: asset.name, category: asset.category, requestedBy: currentUser.name, requestedByRole: currentUser.role }];
+    setRequests(nextRequests);
+    window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(nextRequests));
     onNotify(`Request sent for ${asset.assetId}`);
   };
   const visibleAssets = assets.filter((asset) => `${asset.name} ${asset.assetId} ${asset.location} ${asset.category}`.toLowerCase().includes(query.trim().toLowerCase()));
@@ -111,16 +111,23 @@ function ManagerAssetsView({ assets, query, onQueryChange, onNotify }) {
 function EmployeeAssetsView({ assets, query, onQueryChange, onNotify }) {
   const [reportingAsset, setReportingAsset] = useState(null);
   const currentUser = JSON.parse(window.localStorage.getItem('assetflow.currentUser') || '{"name":"Employee"}');
-  const [requestedAssets, setRequestedAssets] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]').filter((request) => request.requestedBy === currentUser.name).map((request) => request.assetId));
+  const [requests, setRequests] = useState(() => JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]'));
+  const requestedAssets = requests.filter((request) => request.requestedBy === currentUser.name).map((request) => request.assetId);
   const availableAssets = assets.filter((asset) => asset.status?.toLowerCase() === 'available');
   const visibleAssets = assets.filter((asset) => {
     const isOwnedStatus = ['assigned', 'maintenance'].includes(asset.status?.toLowerCase());
     const isOwnedByEmployee = asset.assignedTo === currentUser.name;
     return (!isOwnedStatus || isOwnedByEmployee) && `${asset.name} ${asset.assetId} ${asset.location} ${asset.category}`.toLowerCase().includes(query.trim().toLowerCase());
   });
-  const requests = JSON.parse(window.localStorage.getItem('assetflow.assetRequests') || '[]');
   const categoryEntitled = (asset) => assets.some((item) => item.assignedTo === currentUser.name && item.category === asset.category) || requests.some((request) => request.requestedBy === currentUser.name && request.category === asset.category);
-  const requestAsset = (asset) => { if (categoryEntitled(asset)) return onNotify(`You already have or requested a ${asset.category} asset`); if (requests.some((request) => request.assetId === asset.assetId && request.requestedBy === currentUser.name)) return onNotify(`${asset.assetId} already requested`); requests.push({ id: `${asset.assetId}-${Date.now()}`, assetId: asset.assetId, assetName: asset.name, category: asset.category, requestedBy: currentUser.name, requestedByRole: currentUser.role }); window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(requests)); setRequestedAssets((current) => [...current, asset.assetId]); onNotify(`Request sent for ${asset.assetId}`); };
+  const requestAsset = (asset) => {
+    if (categoryEntitled(asset)) return onNotify(`You already have or requested a ${asset.category} asset`);
+    if (requests.some((request) => request.assetId === asset.assetId && request.requestedBy === currentUser.name)) return onNotify(`${asset.assetId} already requested`);
+    const nextRequests = [...requests, { id: `${asset.assetId}-${Date.now()}`, assetId: asset.assetId, assetName: asset.name, category: asset.category, requestedBy: currentUser.name, requestedByRole: currentUser.role }];
+    setRequests(nextRequests);
+    window.localStorage.setItem('assetflow.assetRequests', JSON.stringify(nextRequests));
+    onNotify(`Request sent for ${asset.assetId}`);
+  };
   const reportAsset = async ({ type, details }) => {
     const status = type === 'Stolen' ? 'Lost' : 'Maintenance';
     if (!reportingAsset._id) { setReportingAsset(null); return onNotify(`${reportingAsset.assetId} reported as ${type.toLowerCase()}`); }
